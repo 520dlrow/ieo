@@ -1,0 +1,1219 @@
+<!DOCTYPE html
+<html lang="en"
+<head
+<meta charset="UTF-8"
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"
+<titleFiles 88 — Real File Viewer</title
+<style
+  :root{
+    --bg:#0e1116; --bg2:#141922; --card:#1a2029; --line:#252c38;
+    --text:#e9eef6; --muted:#8b97a9; --accent:#4f8cff;
+    --accent-soft:rgba(79,140,255,.15); --danger:#ef4444; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:'Segoe UI',Roboto,system-ui,-apple-system,sans-serif;background:#06080b;
+       color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+  button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  svg{display:block}
+  .app{height:100vh;height:100dvh;display:flex;justify-content:center;
+       background:radial-gradient(900px 500px at 50% -10%, #16202e 0%, transparent 70%), #06080b}
+  .shell{width:100%;max-width:960px;height:100%;display:flex;flex-direction:column;
+         background:var(--bg);border-left:1px solid var(--line);border-right:1px solid var(--line);
+         position:relative;overflow:hidden}
+
+  /* top bar */
+  .topbar{display:flex;align-items:center;gap:4px;padding:10px 8px 8px;
+    background:linear-gradient(180deg,#151b25,#111620);border-bottom:1px solid var(--line);
+    position:relative;z-index:20}
+  .icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+    color:#c3cddb;transition:.16s;flex:none}
+  .icon-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+  .icon-btn:active{transform:scale(.92)}
+  .icon-btn svg{width:21px;height:21px}
+  .icon-btn:disabled{opacity:.3;pointer-events:none}
+
+  .crumbs{flex:1;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;
+    padding:0 2px;min-width:0}
+  .crumbs::-webkit-scrollbar{display:none}
+  .crumb{display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:9px;
+    font-size:13.5px;font-weight:500;color:var(--muted);white-space:nowrap;transition:.15s}
+  .crumb:hover{background:rgba(255,255,255,.06);color:#dfe6f0}
+  .crumb.active{color:#fff;background:var(--accent-soft)}
+  .sep{color:#3a4454;font-size:13px;flex:none}
+
+  .searchbar{display:none;align-items:center;gap:9px;padding:9px 14px;
+    background:#111620;border-bottom:1px solid var(--line)}
+  .shell.searching .searchbar{display:flex}
+  .searchbar svg{width:17px;height:17px;color:var(--muted);flex:none}
+  .searchbar input{flex:1;background:none;border:none;outline:none;color:var(--text);
+    font-size:14.5px;font-family:inherit}
+  .searchbar input::placeholder{color:#5b6577}
+
+  .toolbar{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12.5px;
+    color:var(--muted);border-bottom:1px solid var(--line);background:var(--bg);position:relative;z-index:15}
+  .toolbar .spacer{flex:1}
+  .tbtn{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;
+    font-size:12.5px;font-weight:500;color:#a9b5c6;transition:.15s}
+  .tbtn:hover{background:rgba(255,255,255,.07);color:#fff}
+  .tbtn svg{width:15px;height:15px}
+
+  .scroller{flex:1;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+    scrollbar-color:#2b3442 transparent}
+  .scroller::-webkit-scrollbar{width:9px}
+  .scroller::-webkit-scrollbar-thumb{background:#2b3442;border-radius:9px;border:2px solid var(--bg)}
+
+  .list{padding:8px 8px 26px;display:flex;flex-direction:column;gap:2px}
+  .row{display:flex;align-items:center;gap:13px;padding:10px 12px;border-radius:var(--radius);
+    cursor:pointer;transition:background .13s;position:relative;user-select:none}
+  .row:hover{background:rgba(255,255,255,.045)}
+  .row:active{background:rgba(255,255,255,.08)}
+  .row.sel{background:var(--accent-soft)}
+  .ic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;flex:none;
+    background:color-mix(in srgb, currentColor 14%, transparent)}
+  .ic svg{width:23px;height:23px}
+  .ic.big{width:62px;height:62px;border-radius:19px}
+  .ic.big svg{width:32px;height:32px}
+  .thumb{width:44px;height:44px;border-radius:11px;object-fit:cover;flex:none;background:#20262f}
+  .meta{flex:1;min-width:0}
+  .name{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .check{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--accent)}
+  .check svg{width:22px;height:22px}
+
+  .list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;padding:12px 12px 26px}
+  .grid .row{flex-direction:column;gap:8px;padding:16px 8px 13px;text-align:center}
+  .grid .ic,.grid .thumb{width:56px;height:56px;border-radius:14px}
+  .grid .ic svg{width:29px;height:29px}
+  .grid .meta{width:100%}
+  .grid .name{font-size:12.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+  .grid .sub{font-size:11px;margin-top:3px}
+  .grid .check{position:absolute;top:8px;left:8px}
+
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;padding:60px 24px;color:#5b6678;text-align:center}
+  .empty svg{width:64px;height:64px;opacity:.5}
+  .empty h3{font-size:17px;font-weight:600;color:#aab6c7}
+  .empty p{font-size:13px;line-height:1.6;max-width:380px}
+  .primary{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:13px;
+    background:var(--accent);color:#fff;font-size:14.5px;font-weight:600;transition:.15s;margin-top:6px}
+  .primary:hover{background:#3d7cf5;transform:translateY(-1px)}
+  .primary svg{width:19px;height:19px}
+
+  .footer{padding:11px 16px 14px;border-top:1px solid var(--line);background:#111620}
+  .bar{height:6px;border-radius:6px;background:#232b38;overflow:hidden;display:flex}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#4f8cff,#7b5cff)}
+  .bar u{display:block;height:100%;background:#2fbf71}
+  .stxt{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:7px}
+
+  .selbar{position:absolute;left:10px;right:10px;bottom:10px;z-index:40;display:flex;align-items:center;
+    gap:4px;padding:8px 10px;border-radius:16px;background:#1d2530;border:1px solid #2c3644;
+    box-shadow:0 14px 40px rgba(0,0,0,.6);transform:translateY(140%);
+    transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  .selbar.show{transform:translateY(0)}
+  .selbar .count{font-size:12.5px;font-weight:600;padding:0 8px;color:#b9c5d6;white-space:nowrap}
+  .selbar .spacer{flex:1}
+  .sbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 9px;border-radius:10px;
+    font-size:10.5px;color:#a9b5c6;transition:.15s}
+  .sbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+  .sbtn svg{width:18px;height:18px}
+  .sbtn.danger:hover{color:#ff8080;background:rgba(239,68,68,.14)}
+
+  .menu{position:absolute;top:52px;right:10px;z-index:60;min-width:210px;background:#1c232e;
+    border:1px solid #2c3644;border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);
+    opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;transition:.16s}
+  .menu.show{opacity:1;transform:none;pointer-events:auto}
+  .mtitle{font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5d6a7d;padding:8px 10px 4px}
+  .mi{display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 10px;
+    border-radius:9px;font-size:13.5px;color:#ccd6e4;transition:.13s;text-align:left}
+  .mi:hover{background:rgba(255,255,255,.07)}
+  .mi.active{color:#8fb8ff}
+  .msep{height:1px;background:var(--line);margin:5px 8px}
+
+  .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:70;opacity:0;
+    pointer-events:none;transition:.22s;backdrop-filter:blur(2px)}
+  .backdrop.show{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:80;background:#171d27;
+    border-top:1px solid #2a3341;border-radius:22px 22px 0 0;padding:8px 20px 26px;
+    transform:translateY(105%);transition:transform .3s cubic-bezier(.22,1,.36,1);max-height:82%;overflow-y:auto}
+  .sheet.open{transform:translateY(0)}
+  .handle{width:40px;height:4px;border-radius:4px;background:#36404f;margin:0 auto 16px}
+  .sheetHead{display:flex;align-items:center;gap:15px;margin-bottom:18px}
+  .sname{font-size:16.5px;font-weight:600;word-break:break-all;line-height:1.3}
+  .ssub{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:11px 2px;
+    border-bottom:1px solid #222a36;font-size:13.5px}
+  .kv span{color:var(--muted);flex:none}
+  .kv b{font-weight:500;text-align:right;word-break:break-all}
+  .sheetActions{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+  .abtn{flex:1;min-width:78px;display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:13px 6px;border-radius:14px;background:#212a37;font-size:11.5px;color:#c0cbdb;transition:.15s}
+  .abtn:hover{background:#2a3546;color:#fff}
+  .abtn svg{width:20px;height:20px}
+  .abtn.red:hover{background:rgba(239,68,68,.18);color:#ff9a9a}
+
+  /* viewer */
+  .viewer{position:absolute;inset:0;z-index:90;background:#0a0d12;display:flex;flex-direction:column;
+    opacity:0;pointer-events:none;transition:.2s}
+  .viewer.open{opacity:1;pointer-events:auto}
+  .vhead{display:flex;align-items:center;gap:10px;padding:10px 12px;
+    background:#111620;border-bottom:1px solid var(--line)}
+  .vtitle{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vbody{flex:1;display:grid;place-items:center;overflow:auto;padding:16px;min-height:0}
+  .vbody img,.vbody video{max-width:100%;max-height:100%;border-radius:10px;object-fit:contain}
+  .vbody audio{width:min(520px,90%)}
+  .vbody iframe{width:100%;height:100%;border:none;border-radius:10px;background:#fff}
+  .vbody pre{width:100%;height:100%;overflow:auto;background:#111620;border:1px solid var(--line);
+    border-radius:12px;padding:16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+    line-height:1.6;color:#c9d4e3;white-space:pre-wrap;word-break:break-word}
+  .vbody .noview{text-align:center;color:var(--muted);font-size:13.5px;line-height:1.7}
+
+  .toast{position:absolute;left:50%;bottom:34px;transform:translate(-50%,20px);z-index:100;
+    background:#2a3341;color:#e6edf7;padding:11px 18px;border-radius:12px;font-size:13px;
+    box-shadow:0 12px 34px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.24s;
+    max-width:86%;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .drop{position:absolute;inset:0;z-index:200;background:rgba(79,140,255,.12);
+    border:2px dashed var(--accent);display:none;place-items:center;
+    font-size:16px;font-weight:600;color:#cfe0ff;backdrop-filter:blur(3px)}
+  .drop.on{display:grid}
+
+  .spinner{width:26px;height:26px;border:3px solid #2b3442;border-top-color:var(--accent);
+    border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (max-width:520px){
+    .list.grid{grid-template-columns:repeat(auto-fill,minmax(98px,1fr))}
+  }
+</style
+</head
+<body
+<div class="app"
+  <div class="shell" id="shell"
+
+    <header class="topbar"
+      <button class="icon-btn" id="btnBack" disabled title="Back"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/</svg
+      </button
+      <div class="crumbs" id="crumbs"</div
+      <button class="icon-btn" id="btnSearch" title="Search" disabled
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/</svg
+      </button
+      <button class="icon-btn" id="btnMore" title="More" disabled
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/</svg
+      </button
+    </header
+
+    <div class="searchbar"
+      <svg viewBox="0 0 24 24" fill="currentColor"<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/</svg
+      <input id="searchInput" placeholder="Search this folder…" autocomplete="off" spellcheck="false"
+      <button class="icon-btn" id="btnSearchClose" style="width:32px;height:32px"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/</svg
+      </button
+    </div
+
+    <div class="toolbar"
+      <span id="countLabel"No folder opened</span
+      <div class="spacer"</div
+      <button class="tbtn" id="btnPick"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/</svg
+        <span id="pickLabel"Open Folder</span
+      </button
+      <button class="tbtn" id="btnSort" disabled
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/</svg
+        <span id="sortLabel"Name</span
+      </button
+      <button class="tbtn" id="btnView" disabled
+        <svg viewBox="0 0 24 24" fill="currentColor" id="viewIcon"<path d="M3 5h8v6H3V5zm10 0h8v6h-8V5zM3 13h8v6H3v-6zm10 0h8v6h-8v-6z"/</svg
+      </button
+    </div
+
+    <main class="scroller" id="scroller"
+      <div class="list" id="list"</div
+    </main
+
+    <footer class="footer"
+      <div class="bar"<i style="width:0%"</i<u style="width:100%"</u</div
+      <div class="stxt"<span id="footLeft"—</span<span id="footRight"—</span</div
+    </footer
+
+    <div class="selbar" id="selBar"
+      <button class="icon-btn" id="selClose" style="width:34px;height:34px"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/</svg
+      </button
+      <span class="count" id="selCount"0 selected</span
+      <div class="spacer"</div
+      <button class="sbtn" data-act="download"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/</svgSave
+      </button
+      <button class="sbtn" data-act="info"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M11 7h2v2h-2V7zm0 4h2v6h-2v-6zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/</svgInfo
+      </button
+      <button class="sbtn danger" data-act="delete"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/</svgDelete
+      </button
+    </div
+
+    <div class="menu" id="menu"</div
+    <div class="backdrop" id="backdrop"</div
+    <div class="sheet" id="sheet"<div class="handle"</div<div id="sheetBody"</div</div
+
+    <div class="viewer" id="viewer"
+      <div class="vhead"
+        <button class="icon-btn" id="vClose" style="width:36px;height:36px"
+          <svg viewBox="0 0 24 24" fill="currentColor"<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/</svg
+        </button
+        <div class="vtitle" id="vTitle"</div
+        <button class="icon-btn" id="vSave" style="width:36px;height:36px" title="Save a copy"
+          <svg viewBox="0 0 24 24" fill="currentColor"<path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/</svg
+        </button
+      </div
+      <div class="vbody" id="vBody"</div
+    </div
+
+    <div class="drop" id="drop"Drop a folder here</div
+    <div class="toast" id="toast"</div
+  </div
+</div
+
+<input type="file" id="dirInput" webkitdirectory directory multiple hidden
+
+<script
+/* ============================================================
+   ICONS + FILE TYPES
+   ============================================================ */
+const P = {
+  folder : '<path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/',
+  archive: '<path d="M20.54 5.23l-1.39-1.68A1.99 1.99 0 0 0 17.54 3H6.46c-.47 0-.9.21-1.19.55L3.46 5.23A2 2 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5 6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/',
+  image  : '<path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/',
+  video  : '<path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/',
+  audio  : '<path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/',
+  pdf    : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/',
+  doc    : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/',
+  text   : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 12H8v-2h8v2zm0-4H8V8h8v2zm-3-4V3.5L18.5 9H13z"/',
+  code   : '<path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/',
+  file   : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/'
+};
+const svg = d = `<svg viewBox="0 0 24 24" fill="currentColor"${d}</svg`;
+const CHECK_ON  = '<svg viewBox="0 0 24 24" fill="currentColor"<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/</svg';
+const CHECK_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"<circle cx="12" cy="12" r="9"/</svg';
+
+const EXT = {
+  jpg:'image',jpeg:'image',png:'image',gif:'image',webp:'image',bmp:'image',avif:'image',ico:'image',svg:'image',
+  mp4:'video',mkv:'video',avi:'video',mov:'video',webm:'video',m4v:'video','3gp':'video',wmv:'video',flv:'video',
+  mp3:'audio',wav:'audio',flac:'audio',aac:'audio',ogg:'audio',m4a:'audio',opus:'audio',wma:'audio',
+  zip:'archive',rar:'archive','7z':'archive',tar:'archive',gz:'archive',bz2:'archive',xz:'archive',tgz:'archive',
+  pdf:'pdf',
+  doc:'doc',docx:'doc',xls:'doc',xlsx:'doc',ppt:'doc',pptx:'doc',odt:'doc',ods:'doc',csv:'doc',rtf:'doc',
+  txt:'text',md:'text',log:'text',ini:'text',cfg:'text',conf:'text',env:'text',
+  js:'code',mjs:'code',cjs:'code',ts:'code',tsx:'code',jsx:'code',json:'code',html:'code',htm:'code',
+  css:'code',scss:'code',xml:'code',yaml:'code',yml:'code',java:'code',kt:'code',py:'code',rb:'code',
+  go:'code',rs:'code',c:'code',h:'code',cpp:'code',hpp:'code',cs:'code',php:'code',sh:'code',bash:'code',
+  sql:'code',swift:'code',dart:'code',lua:'code',vue:'code',toml:'code'
+};
+const KIND = {
+  image  :{i:P.image,  c:'#34d399'},
+  video  :{i:P.video,  c:'#f472b6'},
+  audio  :{i:P.audio,  c:'#fb923c'},
+  archive:{i:P.archive,c:'#a78bfa'},
+  pdf    :{i:P.pdf,    c:'#f87171'},
+  doc    :{i:P.doc,    c:'#60a5fa'},
+  text   :{i:P.text,   c:'#94a3b8'},
+  code   :{i:P.code,   c:'#22d3ee'},
+  file   :{i:P.file,   c:'#7c8798'}
+};
+const kindOf = name = {
+  const e = (name.split('.').pop() || '').toLowerCase();
+  if(!name.includes('.')) return 'file';
+  return EXT[e] || 'file';
+};
+const extOf = name = (name.includes('.') ? name.split('.').pop().toUpperCase() : '');
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  root: null,
+  stack: [],
+  items: [],
+  search: '',
+  sortKey: 'name',
+  sortAsc: true,
+  view: 'list',
+  selected: new Set(),
+  selectMode: false,
+  supported: typeof window.showDirectoryPicker === 'function',
+  busy: false
+};
+const $ = id = document.getElementById(id);
+const el = {
+  shell:$('shell'), crumbs:$('crumbs'), list:$('list'), scroller:$('scroller'),
+  count:$('countLabel'), menu:$('menu'), sheet:$('sheet'), backdrop:$('backdrop'),
+  sheetBody:$('sheetBody'), toast:$('toast'), selBar:$('selBar'), selCount:$('selCount'),
+  sortLabel:$('sortLabel'), viewIcon:$('viewIcon'), searchInput:$('searchInput'),
+  viewer:$('viewer'), vBody:$('vBody'), vTitle:$('vTitle'), drop:$('drop'),
+  footLeft:$('footLeft'), footRight:$('footRight'), dirInput:$('dirInput')
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+const esc = s = String(s).replace(/[&<"']/g, c = ({'&':'&amp;','<':'&lt;','':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmtSize(b){
+  if(b == null || isNaN(b)) return '—';
+  if(b < 1024) return b + ' B';
+  const u = ['KB','MB','GB','TB'];
+  let i = -1;
+  do { b /= 1024; i++; } while(b = 1024 && i < u.length - 1);
+  return (b < 10 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
+}
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = new Date(ts), now = new Date();
+  const same = (a,b) = a.toDateString() === b.toDateString();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  const hm = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  if(same(d, now)) return 'Today ' + hm;
+  if(same(d, y))   return 'Yesterday ' + hm;
+  if(d.getFullYear() === now.getFullYear())
+    return d.toLocaleDateString([], {day:'2-digit', month:'short'}) + ' ' + hm;
+  return d.toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'});
+}
+function toast(msg){
+  const t = el.toast;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() = t.classList.remove('show'), 2200);
+}
+const isDir = n = n.isDir;
+const nodeKind = n = n.isDir ? null : kindOf(n.name);
+function iconFor(n){
+  if(n.isDir) return {i:P.folder, c:'#f0b429'};
+  const k = kindOf(n.name);
+  return KIND[k] || KIND.file;
+}
+
+/* ============================================================
+   LOADING — File System Access API
+   ============================================================ */
+async function pickFolder(){
+  if(S.supported){
+    let handle;
+    try{
+      handle = await window.showDirectoryPicker({ mode:'readwrite' });
+    }catch(e){
+      if(e.name === 'AbortError') return;
+      // permission / not allowed - fall back
+      try{ handle = await window.showDirectoryPicker({ mode:'read' }); }
+      catch(e2){
+        if(e2.name === 'AbortError') return;
+        el.dirInput.click();
+        return;
+      }
+    }
+    const root = {
+      name: handle.name, isDir:true, handle, loaded:false, children:[], parent:null
+    };
+    await openRoot(root);
+  } else {
+    el.dirInput.click();
+  }
+}
+
+async function readDirHandle(dirHandle){
+  const out = [];
+  for await (const [name, h] of dirHandle.entries()){
+    if(name.startsWith('.')) continue;              // hide dotfiles by default
+    if(h.kind === 'directory')
+      out.push({ name, isDir:true, handle:h, loaded:false, children:[] });
+    else
+      out.push({ name, isDir:false, handle:h, file:null });
+  }
+  return out;
+}
+
+async function ensureLoaded(dir){
+  if(dir.loaded) return;
+  if(dir.handle){
+    dir.children = await readDirHandle(dir.handle);
+    dir.loaded = true;
+  } else {
+    dir.loaded = true;
+  }
+}
+
+/* progressive metadata fetch (sizes / dates) */
+let hydrateToken = 0;
+async function hydrate(dir){
+  const token = ++hydrateToken;
+  const targets = (dir.children || []).filter(c = !c.isDir && !c.file && c.handle);
+  if(!targets.length) return;
+  for(let i = 0; i < targets.length; i++){
+    try { targets[i].file = await targets[i].handle.getFile(); } catch(e){}
+    if(token !== hydrateToken) return;
+    if(i  0 && i % 40 === 0 && S.stack[S.stack.length-1] === dir) render();
+  }
+  if(S.stack[S.stack.length-1] === dir) render();
+}
+
+/* ============================================================
+   LOADING — <input webkitdirectory fallback + drag&drop
+   ============================================================ */
+function treeFromFileList(files, rootName){
+  const root = { name: rootName || 'Files', isDir:true, loaded:true, children:[], parent:null };
+  const map = new Map([['', root]]);
+
+  const ensure = (parts) = {
+    let path = '', node = root;
+    for(const part of parts){
+      path = path ? path + '/' + part : part;
+      if(map.has(path)){ node = map.get(path); continue; }
+      const nd = { name: part, isDir:true, loaded:true, children:[], parent:node };
+      node.children.push(nd);
+      map.set(path, nd);
+      node = nd;
+    }
+    return node;
+  };
+
+  for(const f of files){
+    const rel = f.webkitRelativePath || f._relPath || f.name;
+    const parts = rel.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    const parent = ensure(parts);
+    parent.children.push({ name: fileName, isDir:false, file:f, parent });
+  }
+  return root;
+}
+
+function readAllEntries(reader){
+  return new Promise(resolve = {
+    const out = [];
+    const step = () = reader.readEntries(ents = {
+      if(!ents.length) return resolve(out);
+      out.push(...ents);
+      step();
+    }, () = resolve(out));
+    step();
+  });
+}
+async function walkEntry(entry, prefix, acc){
+  if(entry.isFile){
+    const file = await new Promise((res, rej) = entry.file(res, rej));
+    file._relPath = prefix + entry.name;
+    acc.push(file);
+  } else if(entry.isDirectory){
+    const reader = entry.createReader();
+    const ents = await readAllEntries(reader);
+    for(const e of ents) await walkEntry(e, prefix + entry.name + '/', acc);
+  }
+}
+
+/* ============================================================
+   OPEN / NAVIGATE
+   ============================================================ */
+async function openRoot(node){
+  node.parent = null;
+  S.root = node;
+  S.stack = [node];
+  S.search = '';
+  el.searchInput.value = '';
+  el.shell.classList.remove('searching');
+  resetSelection();
+  setBusy(true);
+  try { await ensureLoaded(node); } catch(e){ toast('Could not read folder'); }
+  setBusy(false);
+  el.scroller.scrollTop = 0;
+  render();
+  hydrate(node);
+}
+
+async function enterDir(node){
+  if(node._loading) return;
+  node._loading = true;
+  setBusy(true);
+  try { await ensureLoaded(node); }
+  catch(e){ toast('Cannot open “' + node.name + '”'); node._loading = false; setBusy(false); return; }
+  node._loading = false;
+  setBusy(false);
+  if(node.parent == null && S.stack.length) node.parent = S.stack[S.stack.length-1];
+  S.stack.push(node);
+  S.search = '';
+  el.searchInput.value = '';
+  el.shell.classList.remove('searching');
+  resetSelection();
+  el.scroller.scrollTop = 0;
+  render();
+  hydrate(node);
+}
+
+function goBack(){
+  if(S.stack.length  1){
+    S.stack.pop();
+    resetSelection();
+    el.scroller.scrollTop = 0;
+    render();
+  }
+}
+
+function setBusy(b){
+  S.busy = b;
+  document.querySelectorAll('.tbtn, #btnSearch, #btnMore').forEach(x = {
+    if(x.id === 'btnSort' || x.id === 'btnView' || x.id === 'btnSearch' || x.id === 'btnMore')
+      x.disabled = b || !S.root;
+  });
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderCrumbs(){
+  const c = el.crumbs;
+  c.innerHTML = '';
+  if(!S.stack.length) return;
+  S.stack.forEach((node, i) = {
+    if(i  0){
+      const s = document.createElement('span');
+      s.className = 'sep'; s.textContent = '›';
+      c.appendChild(s);
+    }
+    const b = document.createElement('button');
+    b.className = 'crumb' + (i === S.stack.length - 1 ? ' active' : '');
+    b.innerHTML = (i === 0 ? svg(P.folder) : '') + '<span' + esc(node.name) + '</span';
+    b.onclick = () = {
+      if(i === S.stack.length - 1) return;
+      S.stack = S.stack.slice(0, i + 1);
+      resetSelection();
+      render();
+    };
+    c.appendChild(b);
+  });
+  requestAnimationFrame(() = { c.scrollLeft = c.scrollWidth; });
+}
+
+function sizeOf(n){
+  if(n.isDir) return -1;
+  return n.file ? n.file.size : null;
+}
+function sortItems(items){
+  const dirFirst = (a,b) = (b.isDir ? 1 : 0) - (a.isDir ? 1 : 0);
+  const nameCmp = (a,b) = a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'});
+  const dir = S.sortAsc ? 1 : -1;
+  items.sort((a,b) = {
+    const d = dirFirst(a,b);
+    if(d !== 0) return d;
+    let r = 0;
+    if(S.sortKey === 'name') r = nameCmp(a,b);
+    else if(S.sortKey === 'size'){
+      const sa = sizeOf(a), sb = sizeOf(b);
+      r = ((sa == null ? -1 : sa) - (sb == null ? -1 : sb)) || nameCmp(a,b);
+    }
+    else if(S.sortKey === 'date'){
+      const ta = a.file ? a.file.lastModified : 0;
+      const tb = b.file ? b.file.lastModified : 0;
+      r = (ta - tb) || nameCmp(a,b);
+    }
+    else if(S.sortKey === 'type'){
+      const ka = a.isDir ? 'dir' : kindOf(a.name);
+      const kb = b.isDir ? 'dir' : kindOf(b.name);
+      r = ka.localeCompare(kb) || nameCmp(a,b);
+    }
+    return r * dir;
+  });
+  return items;
+}
+
+function rowHTML(n, i){
+  const ic = iconFor(n);
+  const sel = S.selected.has(n.name);
+  const selCount = S.stack.length && S.root ? '' : '';
+  let sub;
+  if(n.isDir){
+    const cnt = n.loaded ? (n.children||[]).length + (n.children.length === 1 ? ' item' : ' items') : 'folder';
+    sub = cnt;
+  } else {
+    const sz = n.file ? fmtSize(n.file.size) : '…';
+    const dt = n.file ? fmtDate(n.file.lastModified) : '';
+    sub = dt ? sz + ' · ' + dt : sz;
+  }
+
+  const thumb = (!n.isDir && n._thumbUrl)
+    ? `<img class="thumb" src="${n._thumbUrl}" alt=""`
+    : `<div class="ic" style="color:${ic.c}"${svg(ic.i)}</div`;
+
+  return `<div class="row${sel ? ' sel' : ''}" data-idx="${i}"
+      ${thumb}
+      <div class="meta"
+        <div class="name"${esc(n.name)}</div
+        <div class="sub"${sub}</div
+      </div
+      ${S.selectMode ? `<div class="check"${sel ? CHECK_ON : CHECK_OFF}</div` : ''}
+    </div`;
+}
+
+function render(){
+  renderCrumbs();
+  const hasFolder = S.stack.length  0;
+  document.getElementById('btnBack').disabled = S.stack.length <= 1;
+  document.getElementById('btnSearch').disabled = !hasFolder;
+  document.getElementById('btnMore').disabled = !hasFolder;
+  document.getElementById('btnSort').disabled = !hasFolder;
+  document.getElementById('btnView').disabled = !hasFolder;
+
+  if(!hasFolder){
+    el.count.textContent = 'No folder opened';
+    el.list.className = 'list';
+    el.list.innerHTML = emptyHTML();
+    el.footLeft.textContent = '—';
+    el.footRight.textContent = '—';
+    updateSelBar();
+    return;
+  }
+
+  const dir = S.stack[S.stack.length - 1];
+  let items = (dir.children || []).slice();
+  if(S.search) items = items.filter(x = x.name.toLowerCase().includes(S.search.toLowerCase()));
+  sortItems(items);
+  S.items = items;
+
+  el.count.textContent = items.length + (items.length === 1 ? ' item' : ' items')
+    + (S.search ? ' (filtered)' : '');
+  el.sortLabel.textContent = S.sortKey.charAt(0).toUpperCase() + S.sortKey.slice(1);
+  el.list.className = 'list' + (S.view === 'grid' ? ' grid' : '');
+  el.viewIcon.innerHTML = S.view === 'list'
+    ? '<path d="M3 5h8v6H3V5zm10 0h8v6h-8V5zM3 13h8v6H3v-6zm10 0h8v6h-8v-6z"/'
+    : '<path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h18v2H3v-2z"/';
+
+  if(!items.length){
+    el.list.className = 'list';
+    el.list.innerHTML = S.search
+      ? `<div class="empty"${svg(P.file)}<pNo files match “${esc(S.search)}”</p</div`
+      : `<div class="empty"${svg(P.folder)}<pThis folder is empty.</p</div`;
+  } else {
+    el.list.innerHTML = items.map(rowHTML).join('');
+    if(S.view === 'grid') makeThumbs(items);
+  }
+
+  // footer stats
+  const files = items.filter(x = !x.isDir);
+  const known = files.filter(x = x.file);
+  const total = known.reduce((s,f) = s + f.file.size, 0);
+  el.footLeft.textContent = items.length + ' items · ' + files.length + ' files · '
+    + items.filter(x = x.isDir).length + ' folders';
+  el.footRight.textContent = known.length === files.length
+    ? fmtSize(total) + ' total'
+    : fmtSize(total) + ' (scanning…)';
+  const pct = Math.min(100, (total / (8 * 1024 * 1024 * 1024)) * 100);
+  document.querySelector('.bar i').style.width = pct.toFixed(1) + '%';
+  document.querySelector('.bar u').style.width = (100 - pct).toFixed(1) + '%';
+
+  updateSelBar();
+}
+
+function emptyHTML(){
+  const api = S.supported
+    ? 'Your browser supports real folder access. Pick any folder on your computer — nothing is uploaded, everything stays on your device.'
+    : 'Your browser does not support the File System Access API, so the folder picker will upload a directory listing. For the best experience use <bChrome</b or <bEdge</b.';
+  return `<div class="empty"
+      ${svg(P.folder)}
+      <h3No folder open</h3
+      <p${api}</p
+      <button class="primary" id="emptyOpen"
+        <svg viewBox="0 0 24 24" fill="currentColor"<path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/</svg
+        Open Folder
+      </button
+      <p style="font-size:11.5px;opacity:.75;margin-top:4px"or drag &amp; drop a folder anywhere on this window</p
+    </div`;
+}
+
+/* lazy thumbnail generation for images in grid view */
+function makeThumbs(items){
+  const imgs = items.filter(n = !n.isDir && kindOf(n.name) === 'image' && !n._thumbUrl && n.file);
+  imgs.slice(0, 60).forEach(n = {
+    try{
+      n._thumbUrl = URL.createObjectURL(n.file);
+    }catch(e){}
+  });
+  if(imgs.length) {
+    // update just those rows
+    imgs.forEach(n = {
+      const idx = S.items.indexOf(n);
+      if(idx < 0 || !n._thumbUrl) return;
+      const row = el.list.querySelector(`[data-idx="${idx}"]`);
+      if(!row) return;
+      const ic = row.querySelector('.ic');
+      if(ic){
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        img.src = n._thumbUrl;
+        ic.replaceWith(img);
+      }
+    });
+  }
+}
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+function resetSelection(){
+  S.selected.clear();
+  S.selectMode = false;
+}
+function updateSelBar(){
+  el.selBar.classList.toggle('show', S.selectMode);
+  el.selCount.textContent = S.selected.size + ' selected';
+}
+function toggleSel(name){
+  if(S.selected.has(name)) S.selected.delete(name);
+  else S.selected.add(name);
+  render();
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+async function getFile(n){
+  if(n.file) return n.file;
+  if(n.handle){
+    try { n.file = await n.handle.getFile(); return n.file; }
+    catch(e){ return null; }
+  }
+  return null;
+}
+function saveFile(file, name){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() = URL.revokeObjectURL(url), 4000);
+}
+
+/* ---------- viewer ---------- */
+let currentViewerNode = null, viewerUrls = [];
+function closeViewer(){
+  el.viewer.classList.remove('open');
+  el.vBody.innerHTML = '';
+  viewerUrls.forEach(u = URL.revokeObjectURL(u));
+  viewerUrls = [];
+  currentViewerNode = null;
+}
+el.vClose.addEventListener('click', closeViewer);
+el.vSave.addEventListener('click', async () = {
+  if(!currentViewerNode) return;
+  const f = await getFile(currentViewerNode);
+  if(f) saveFile(f, currentViewerNode.name);
+});
+
+async function viewFile(n){
+  const file = await getFile(n);
+  if(!file){ toast('Cannot read this file'); return; }
+  currentViewerNode = n;
+  el.vTitle.textContent = n.name;
+  el.vBody.innerHTML = '<div class="spinner"</div';
+  el.viewer.classList.add('open');
+
+  const kind = kindOf(n.name);
+  const url = URL.createObjectURL(file);
+  viewerUrls.push(url);
+
+  setTimeout(async () = {
+    try{
+      if(kind === 'image'){
+        el.vBody.innerHTML = `<img src="${url}" alt=""`;
+      }
+      else if(kind === 'video'){
+        el.vBody.innerHTML = `<video src="${url}" controls autoplay playsinline</video`;
+      }
+      else if(kind === 'audio'){
+        el.vBody.innerHTML = `<audio src="${url}" controls autoplay</audio`;
+      }
+      else if(kind === 'pdf'){
+        el.vBody.innerHTML = `<iframe src="${url}"</iframe`;
+      }
+      else if(kind === 'text' || kind === 'code'){
+        const max = 2 * 1024 * 1024;
+        if(file.size  max){
+          el.vBody.innerHTML = `<div class="noview"File too large to preview (${fmtSize(file.size)}).<brUse the save button to download it.</div`;
+        } else {
+          const text = await file.text();
+          const pre = document.createElement('pre');
+          pre.textContent = text;
+          el.vBody.innerHTML = '';
+          el.vBody.appendChild(pre);
+        }
+      }
+      else if(kind === 'archive'){
+        el.vBody.innerHTML = `<div class="noview"
+            <b${esc(n.name)}</b<br<br
+            Archive preview needs a ZIP reader.<br
+            Use the save button to download and open it.
+          </div`;
+      }
+      else {
+        el.vBody.innerHTML = `<div class="noview"
+            No preview available for <b${esc(extOf(n.name) || 'this file')}</b.<br
+            ${fmtSize(file.size)}<br<br
+            Tap the download icon above to save a copy.
+          </div`;
+      }
+    }catch(e){
+      el.vBody.innerHTML = `<div class="noview"Could not preview this file.</div`;
+    }
+  }, 30);
+}
+
+/* ---------- info sheet ---------- */
+function showInfo(node){
+  const ic = iconFor(node);
+  const path = S.stack.map(x = x.name).join(' / ') + ' / ' + node.name;
+  const size = node.isDir
+    ? (node.loaded ? (node.children||[]).length + ' items' : 'not loaded')
+    : (node.file ? fmtSize(node.file.size) : '…');
+  const mod = node.file ? fmtDate(node.file.lastModified) : '—';
+  const kindLabel = node.isDir ? 'Folder' : (extOf(node.name) || 'File') + ' file';
+
+  el.sheetBody.innerHTML = `
+    <div class="sheetHead"
+      <div class="ic big" style="color:${ic.c}"${svg(ic.i)}</div
+      <div style="min-width:0"
+        <div class="sname"${esc(node.name)}</div
+        <div class="ssub"${kindLabel}</div
+      </div
+    </div
+    <div class="kv"<spanSize</span<b${size}</b</div
+    <div class="kv"<spanModified</span<b${mod}</b</div
+    <div class="kv"<spanType</span<b${esc(node.isDir ? 'directory' : (node.file ? node.file.type || 'unknown' : 'unknown'))}</b</div
+    <div class="kv"<spanPath</span<b${esc(path)}</b</div
+    <div class="sheetActions"
+      ${node.isDir
+        ? `<button class="abtn" data-sheet="open"${svg(P.folder)}Open</button`
+        : `<button class="abtn" data-sheet="view"${svg(P.image)}Open</button
+           <button class="abtn" data-sheet="save"${svg('<path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/')}Save</button`}
+      <button class="abtn" data-sheet="rename"${svg(P.text)}Rename</button
+      <button class="abtn red" data-sheet="delete"${svg('<path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/')}Delete</button
+    </div`;
+  el.sheet._node = node;
+  el.sheet.classList.add('open');
+  el.backdrop.classList.add('show');
+}
+function closeSheet(){
+  el.sheet.classList.remove('open');
+  el.backdrop.classList.remove('show');
+}
+el.sheetBody.addEventListener('click', async e = {
+  const b = e.target.closest('[data-sheet]');
+  if(!b) return;
+  const act = b.dataset.sheet, node = el.sheet._node;
+  closeSheet();
+  if(act === 'open')   setTimeout(() = enterDir(node), 200);
+  if(act === 'view')   viewFile(node);
+  if(act === 'save')   { const f = await getFile(node); if(f) saveFile(f, node.name); }
+  if(act === 'rename') renameNode(node);
+  if(act === 'delete') deleteNodes([node]);
+});
+el.backdrop.addEventListener('click', closeSheet);
+
+/* ---------- rename ---------- */
+async function renameNode(node){
+  const dir = S.stack[S.stack.length - 1];
+  if(!dir.handle){ toast('Rename needs folder access (Chrome/Edge)'); return; }
+  const newName = prompt('New name:', node.name);
+  if(!newName || newName === node.name) return;
+  try{
+    if(node.isDir){
+      // no move API for dirs in stable spec — re-create is destructive, so bail
+      toast('Renaming folders is not supported yet');
+      return;
+    }
+    const f = await getFile(node);
+    const fh = await dir.handle.getFileHandle(newName, { create:true });
+    const w = await fh.createWritable();
+    await w.write(f);
+    await w.close();
+    await dir.handle.removeEntry(node.name);
+    toast('Renamed to “' + newName + '”');
+  }catch(e){
+    toast('Rename failed');
+    return;
+  }
+  await refreshCurrent();
+}
+
+/* ---------- delete ---------- */
+async function deleteNodes(nodes){
+  const dir = S.stack[S.stack.length - 1];
+  if(!dir.handle){ toast('Delete needs folder access (Chrome/Edge)'); return; }
+  const label = nodes.length === 1 ? '“' + nodes[0].name + '”' : nodes.length + ' items';
+  if(!confirm('Delete ' + label + '?\nThis cannot be undone.')) return;
+  let ok = 0;
+  for(const n of nodes){
+    try{
+      await dir.handle.removeEntry(n.name, { recursive:true });
+      ok++;
+    }catch(e){
+      toast('Failed: ' + n.name);
+    }
+  }
+  await refreshCurrent();
+  toast('Deleted ' + ok + ' item' + (ok === 1 ? '' : 's'));
+}
+
+async function refreshCurrent(){
+  const dir = S.stack[S.stack.length - 1];
+  if(dir.handle){
+    dir.children = await readDirHandle(dir.handle);
+    dir.loaded = true;
+  }
+  resetSelection();
+  render();
+  hydrate(dir);
+}
+
+/* selection bar */
+el.selBar.addEventListener('click', async e = {
+  const b = e.target.closest('[data-act]');
+  if(!b) return;
+  const act = b.dataset.act;
+  const nodes = S.items.filter(n = S.selected.has(n.name));
+  if(!nodes.length){ toast('Nothing selected'); return; }
+
+  if(act === 'download'){
+    let n = 0;
+    for(const node of nodes){
+      if(node.isDir){ toast('Skipping folder “' + node.name + '”'); continue; }
+      const f = await getFile(node);
+      if(f){ saveFile(f, node.name); n++; await new Promise(r = setTimeout(r, 250)); }
+    }
+    if(n) toast('Saving ' + n + ' file' + (n === 1 ? '' : 's'));
+  }
+  if(act === 'info'){
+    if(nodes.length === 1) showInfo(nodes[0]);
+    else toast(nodes.length + ' items selected');
+  }
+  if(act === 'delete'){ await deleteNodes(nodes); return; }
+  resetSelection();
+  render();
+});
+$('selClose').addEventListener('click', () = { resetSelection(); render(); });
+
+/* ============================================================
+   LIST INTERACTION
+   ============================================================ */
+let pressTimer = null, longPressed = false;
+
+el.list.addEventListener('pointerdown', e = {
+  const row = e.target.closest('[data-idx]');
+  if(!row) return;
+  longPressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() = {
+    longPressed = true;
+    S.selectMode = true;
+    const it = S.items[+row.dataset.idx];
+    if(it) S.selected.add(it.name);
+    if(navigator.vibrate) navigator.vibrate(15);
+    render();
+  }, 430);
+});
+['pointerup','pointercancel','pointerleave','pointermove'].forEach(ev =
+  el.list.addEventListener(ev, () = clearTimeout(pressTimer))
+);
+
+el.list.addEventListener('click', e = {
+  const row = e.target.closest('[data-idx]');
+  if(!row) return;
+  if(longPressed){ longPressed = false; return; }
+  const n = S.items[+row.dataset.idx];
+  if(!n) return;
+  if(S.selectMode) toggleSel(n.name);
+  else if(n.isDir) enterDir(n);
+  else viewFile(n);
+});
+
+el.list.addEventListener('contextmenu', e = {
+  const row = e.target.closest('[data-idx]');
+  if(!row) return;
+  e.preventDefault();
+  S.selectMode = true;
+  const it = S.items[+row.dataset.idx];
+  if(it) S.selected.add(it.name);
+  render();
+});
+
+/* empty-state button (delegated) */
+el.list.addEventListener('click', e = {
+  if(e.target.closest('#emptyOpen')) pickFolder();
+});
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+$('btnBack').addEventListener('click', goBack);
+$('btnPick').addEventListener('click', pickFolder);
+
+$('btnSearch').addEventListener('click', () = {
+  el.shell.classList.toggle('searching');
+  if(el.shell.classList.contains('searching')) el.searchInput.focus();
+  else { S.search = ''; el.searchInput.value = ''; render(); }
+});
+$('btnSearchClose').addEventListener('click', () = {
+  el.shell.classList.remove('searching');
+  S.search = ''; el.searchInput.value = ''; render();
+});
+el.searchInput.addEventListener('input', e = {
+  S.search = e.target.value.trim();
+  render();
+});
+
+$('btnView').addEventListener('click', () = {
+  S.view = S.view === 'list' ? 'grid' : 'list';
+  toast(S.view === 'list' ? 'List view' : 'Grid view');
+  render();
+});
+
+/* ============================================================
+   MENU
+   ============================================================ */
+function buildMenu(){
+  el.menu.innerHTML = `
+    <div class="mtitle"Sort by</div
+    ${['name','size','date','type'].map(k =
+      `<button class="mi${S.sortKey === k ? ' active' : ''}" data-sort="${k}"
+         <span${k.charAt(0).toUpperCase() + k.slice(1)}</span${S.sortKey === k ? '<b✓</b' : ''}
+       </button`).join('')}
+    <div class="msep"</div
+    <button class="mi" data-act="order"<span${S.sortAsc ? 'Ascending' : 'Descending'}</span<b${S.sortAsc ? '↑' : '↓'}</b</button
+    <button class="mi" data-act="view"<spanView: ${S.view === 'list' ? 'List' : 'Grid'}</span</button
+    <button class="mi" data-act="all"<spanSelect all</span</button
+    <div class="msep"</div
+    <button class="mi" data-act="refresh"<spanRefresh folder</span</button
+    <button class="mi" data-act="pick"<spanOpen another folder…</span</button
+  `;
+}
+$('btnMore').addEventListener('click', e = {
+  e.stopPropagation();
+  buildMenu();
+  el.menu.classList.toggle('show');
+});
+document.addEventListener('click', e = {
+  if(!el.menu.contains(e.target)) el.menu.classList.remove('show');
+});
+el.menu.addEventListener('click', async e = {
+  const b = e.target.closest('button');
+  if(!b) return;
+  if(b.dataset.sort){
+    if(S.sortKey === b.dataset.sort) S.sortAsc = !S.sortAsc;
+    else { S.sortKey = b.dataset.sort; S.sortAsc = true; }
+  }
+  const act = b.dataset.act;
+  if(act === 'order') S.sortAsc = !S.sortAsc;
+  if(act === 'view')  S.view = S.view === 'list' ? 'grid' : 'list';
+  if(act === 'all'){
+    S.selectMode = true;
+    S.items.forEach(i = S.selected.add(i.name));
+  }
+  if(act === 'refresh'){ el.menu.classList.remove('show'); await refreshCurrent(); return; }
+  if(act === 'pick'){ el.menu.classList.remove('show'); pickFolder(); return; }
+  el.menu.classList.remove('show');
+  render();
+});
+
+/* ============================================================
+   KEYBOARD
+   ============================================================ */
+document.addEventListener('keydown', e = {
+  if(e.key === 'Escape'){
+    if(el.viewer.classList.contains('open')){ closeViewer(); return; }
+    closeSheet();
+    el.menu.classList.remove('show');
+    if(S.selectMode){ resetSelection(); render(); }
+  }
+  if(e.key === 'Backspace' && !el.shell.classList.contains('searching')){
+    e.preventDefault();
+    goBack();
+  }
+  if(e.key === '/' && document.activeElement !== el.searchInput && S.stack.length){
+    e.preventDefault();
+    el.shell.classList.add('searching');
+    el.searchInput.focus();
+  }
+});
+
+/* ============================================================
+   DRAG & DROP
+   ============================================================ */
+let dragDepth = 0;
+window.addEventListener('dragenter', e = {
+  if(!e.dataTransfer.types.includes('Files')) return;
+  dragDepth++;
+  el.drop.classList.add('on');
+});
+window.addEventListener('dragover', e = e.preventDefault());
+window.addEventListener('dragleave', e = {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if(!dragDepth) el.drop.classList.remove('on');
+});
+window.addEventListener('drop', async e = {
+  e.preventDefault();
+  dragDepth = 0;
+  el.drop.classList.remove('on');
+  const items = e.dataTransfer.items;
+  const entries = [];
+  if(items && items.length){
+    for(const it of items){
+      const en = it.webkitGetAsEntry && it.webkitGetAsEntry();
+      if(en) entries.push(en);
+    }
+  }
+
+  setBusy(true);
+  try{
+    let files = [];
+    let rootName = 'Dropped';
+    if(entries.length){
+      rootName = entries[0].name || 'Dropped';
+      for(const en of entries) await walkEntry(en, '', files);
+    } else {
+      files = [...e.dataTransfer.files];
+    }
+    if(!files.length){ toast('Nothing readable dropped'); setBusy(false); return; }
+    const root = treeFromFileList(files, rootName);
+    await openRoot(root);
+    toast(files.length + ' files loaded');
+  }catch(err){
+    toast('Could not read dropped items');
+  }
+  setBusy(false);
+});
+
+/* ============================================================
+   FALLBACK FILE INPUT
+   ============================================================ */
+el.dirInput.addEventListener('change', async e = {
+  const files = [...e.target.files];
+  if(!files.length) return;
+  const first = files[0].webkitRelativePath || '';
+  const rootName = first.split('/')[0] || 'Files';
+  setBusy(true);
+  await openRoot(treeFromFileList(files, rootName));
+  setBusy(false);
+  toast(files.length + ' files loaded');
+  el.dirInput.value = '';
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+render();
+if(!S.supported){
+  document.getElementById('pickLabel').textContent = 'Open Folder';
+}
+</script
+</body
+</html
